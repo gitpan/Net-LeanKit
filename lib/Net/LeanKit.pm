@@ -1,5 +1,5 @@
 package Net::LeanKit;
-$Net::LeanKit::VERSION = '0.2';
+$Net::LeanKit::VERSION = '0.3';
 # ABSTRACT: A perl library for Leankit.com
 
 use strict;
@@ -14,7 +14,14 @@ use namespace::clean;
 use Class::Tiny qw( email password account ), {
     boardIdentifiers => sub { +{} },
     defaultWipOverrideReason =>
-      sub {'WIP Override performed by external system'}
+      sub {'WIP Override performed by external system'},
+    headers => sub {
+        {   'Accept'       => 'application/json',
+            'Content-type' => 'application/json'
+        };
+    },
+    ua => sub { HTTP::Tiny->new },
+    j  => sub { JSON::Any->new }
 };
 
 sub BUILD {
@@ -25,26 +32,44 @@ sub BUILD {
 }
 
 
-sub client {
-    my ($self, $method, $endpoint) = @_;
+
+sub get {
+    my ($self, $endpoint) = @_;
     my $auth = uri_escape(sprintf("%s:%s", $self->email, $self->password));
     my $url = sprintf('https://%s@%s.leankit.com/kanban/api/%s',
         $auth, $self->account, $endpoint);
-    my $http  = HTTP::Tiny->new;
-    my $j     = JSON::Any->new;
-    my $res   = $http->request(uc $method, $url);
-    my $j_res = $j->decode($res->{content});
-    if ($j_res->{ReplyCode} == 200) {
-        return $j_res->{ReplyData}->[0];
+
+    my $r = $self->ua->get($url, {headers => $self->headers});
+    croak "$r->{status} $r->{reason}" unless $r->{success};
+    my $content = $r->{content} ? $self->j->decode($r->{content}) : 1;
+    return $content->{ReplyData}->[0];
+}
+
+
+sub post {
+    my ($self, $endpoint, $body) = @_;
+    my $auth = uri_escape(sprintf("%s:%s", $self->email, $self->password));
+    my $url = sprintf('https://%s@%s.leankit.com/kanban/api/%s',
+        $auth, $self->account, $endpoint);
+
+    my $post = {headers => $self->headers};
+    if (defined $body) {
+        $post->{content} = $self->j->encode($body);
     }
-    return +[];
+    else {
+        $post->{headers}->{'Content-Length'} = '0';
+    }
+
+    my $r = $self->ua->post($url, $post);
+    croak "$r->{status} $r->{reason}" unless $r->{success};
+    return $self->j->decode($r->{content});
 }
 
 
 
 sub getBoards {
     my ($self) = @_;
-    my $res = $self->client('GET', 'boards');
+    my $res = $self->get('boards');
     return $res;
 }
 
@@ -52,14 +77,14 @@ sub getBoards {
 
 sub getNewBoards {
     my ($self) = @_;
-    return $self->client('GET', 'ListNewBoards');
+    return $self->get('ListNewBoards');
 }
 
 
 sub getBoard {
     my ($self, $id) = @_;
     my $boardId = sprintf('boards/%s', $id);
-    return $self->client('GET', $boardId);
+    return $self->get($boardId);
 }
 
 
@@ -82,7 +107,7 @@ sub getBoardIdentifiers {
     }
 
     my $board = sprintf('board/%s/GetBoardIdentifiers', $boardId);
-    my $data = $self->client('GET', $board);
+    my $data = $self->get($board);
     $self->boardIdentifiers->{$boardId} = $data;
     return $self->boardIdentifiers->{$boardId};
 }
@@ -91,21 +116,21 @@ sub getBoardIdentifiers {
 sub getBoardBacklogLanes {
     my ($self, $boardId) = @_;
     my $board = sprintf("board/%s/backlog", $boardId);
-    return $self->client('GET', $board);
+    return $self->get($board);
 }
 
 
 sub getBoardArchiveLanes {
     my ($self, $boardId) = @_;
     my $board = sprintf("board/%s/archive", $boardId);
-    return $self->client('GET', $board);
+    return $self->get($board);
 }
 
 
 sub getBoardArchiveCards {
     my ($self, $boardId) = @_;
     my $board = sprintf("board/%s/archivecards", $boardId);
-    return $self->client('GET', $board);
+    return $self->get($board);
 }
 
 
@@ -113,7 +138,7 @@ sub getNewerIfExists {
     my ($self, $boardId, $version) = @_;
     my $board = sprintf("board/%s/boardversion/%s/getnewerifexists", $boardId,
         $version);
-    return $self->client('GET', $board);
+    return $self->get($board);
 }
 
 
@@ -121,7 +146,7 @@ sub getBoardHistorySince {
     my ($self, $boardId, $version) = @_;
     my $board = sprintf("board/%s/boardversion/%s/getboardhistorysince",
         $boardId, $version);
-    return $self->client('GET', $board);
+    return $self->get($board);
 }
 
 
@@ -129,14 +154,14 @@ sub getBoardUpdates {
     my ($self, $boardId, $version) = @_;
     my $board =
       sprintf("board/%s/boardversion/%s/checkforupdates", $boardId, $version);
-    return $self->client('GET', $board);
+    return $self->get($board);
 }
 
 
 sub getCard {
     my ($self, $boardId, $cardId) = @_;
     my $board = sprintf("board/%s/getcard/%s", $boardId, $cardId);
-    return $self->client('GET', $board);
+    return $self->get($board);
 }
 
 
@@ -144,7 +169,70 @@ sub getCardByExternalId {
     my ($self, $boardId, $externalCardId) = @_;
     my $board = sprintf("board/%s/getcardbyexternalid/%s",
         $boardId, uri_escape($externalCardId));
-    return $self->client('GET', $board);
+    return $self->get($board);
+}
+
+
+
+sub addCard {
+    my ($self, $boardId, $laneId, $position, $card) = @_;
+    $card->{UserWipOverrideComment} = $self->defaultWipOverrideReason;
+    my $newCard =
+      sprintf('board/%s/AddCardWithWipOvveride/Lane/%s/Position/%s',
+        $boardId, $laneId, $position);
+    return $self->post($newCard, $card);
+}
+
+
+sub addCards {
+    my ($self, $boardId, $cards) = @_;
+    my $newCard =
+      sprintf('board/%s/AddCards?wipOverrideComment="%s"',
+        $boardId, $self->defaultWipOverrideReason);
+    return $self->post($newCard, $cards);
+}
+
+
+
+sub moveCard {
+    my ($self, $boardId, $cardId, $toLaneId, $position) = @_;
+    my $moveCard =
+      sprintf('board/%s/movecardwithwipoverride/%s/lane/%s/position/%s',
+        $boardId, $cardId, $toLaneId, $position);
+    my $params = {comment => $self->defaultWipOverrideReason};
+    return $self->post($moveCard, $params);
+}
+
+
+
+sub moveCardByExternalId {
+    my ($self, $boardId, $externalCardId, $toLaneId, $position) = @_;
+    my $moveCard = sprintf(
+        'board/%s/movecardbyexternalid/%s/lane/%s/position/%s',
+        $boardId, uri_escape($externalCardId),
+        $toLaneId, $position
+    );
+    my $params = {comment => $self->defaultWipOverrideReason};
+    return $self->post($moveCard, $params);
+}
+
+
+
+sub moveCardToBoard {
+    my ($self, $cardId, $destinationBoardId) = @_;
+    my $moveCard = sprintf('card/movecardtoanotherboard/%s/%s',
+        $cardId, $destinationBoardId);
+    my $params = {};
+    return $self->post($moveCard, $params);
+}
+
+
+
+sub updateCard {
+    my ($self, $boardId, $card) = @_;
+    $card->{UserWipOverrideComment} = $self->defaultWipOverrideReason;
+    my $updateCard = sprintf('board/%s/UpdateCardWithWipOverride');
+    return $self->post($updateCard, $card);
 }
 
 1;
@@ -161,7 +249,15 @@ Net::LeanKit - A perl library for Leankit.com
 
 =head1 VERSION
 
-version 0.2
+version 0.3
+
+=head1 SYNOPSIS
+
+  use Net::LeanKit;
+  my $lk = Net::LeanKit(email => 'user\@.mail.com',
+                        password => 'pass',
+                        account => 'my company');
+  $lk->getBoards;
 
 =head1 ATTRIBUTES
 
@@ -179,9 +275,13 @@ Account name in which your account is under, usually a company name.
 
 =head1 METHODS
 
-=head2 client
+=head2 get(STR endpoint)
 
-Builds client url and sets up authentication with api service
+GET requests to leankit
+
+=head2 post(STR endpoint, HASH body)
+
+POST requests to leankit
 
 =head2 getBoards
 
@@ -234,6 +334,42 @@ Get specific card for board
 =head2 getCardByExternalId(INT boardId, INT cardId)
 
 Get specific card for board by an external id
+
+=head2 addCard(INT boardId, INT laneId, INT position, HASHREF card)
+
+Add a card to the board/lane specified. The card hash usually contains
+
+  { TypeId => 1,
+    Title => 'my card title',
+    ExternCardId => DATETIME,
+    Priority => 1
+  }
+
+=head2 addCards(INT boardId, ARRAYREF cards)
+
+Add multiple cards to the board/lane specified. The card hash usually contains
+
+  { TypeId => 1,
+    Title => 'my card title',
+    ExternCardId => DATETIME,
+    Priority => 1
+  }
+
+=head2 moveCard(INT boardId, INT cardId, INT toLaneId, INT position)
+
+Moves card to different lanes
+
+=head2 moveCardByExternalId(INT boardId, INT externalCardId, INT toLaneId, INT position)
+
+Moves card to different lanes by externalId
+
+=head2 moveCardToBoard(INT cardId, INT destinationBoardId)
+
+Moves card to another board
+
+=head2 updateCard(INT boardId, HASHREF card)
+
+Update a card
 
 =head1 AUTHOR
 
