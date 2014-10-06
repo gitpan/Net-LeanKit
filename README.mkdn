@@ -1,0 +1,113 @@
+# NAME
+
+Net::LeanKit - A perl library for Leankit.com
+
+# VERSION
+
+version 0.2
+
+# ATTRIBUTES
+
+## email
+
+Login email
+
+## password
+
+Password
+
+## account
+
+Account name in which your account is under, usually a company name.
+
+# METHODS
+
+## client
+
+Builds client url and sets up authentication with api service
+
+## getBoards
+
+Returns list of boards
+
+## getNewBoards
+
+Returns list of latest created boards
+
+## getBoard(INT id)
+
+Gets leankit board by id
+
+## getBoardByName(STR boardName)
+
+Finds a board by name
+
+## getBoardIdentifiers(INT boardId)
+
+Get board identifiers
+
+## getBoardBacklogLanes(INT boardId)
+
+Get board back log lanes
+
+## getBoardArchiveLanes(INT boardId)
+
+Get board archive lanes
+
+## getBoardArchiveCards(INT boardId)
+
+Get board archive cards
+
+## getNewerIfExists(INT boardId, INT version)
+
+Get newer board version if exists
+
+## getBoardHistorySince(INT boardId, INT version)
+
+Get newer board history
+
+## getBoardUpdates(INT boardId, INT version)
+
+Get board updates
+
+## getCard(INT boardId, INT cardId)
+
+Get specific card for board
+
+## getCardByExternalId(INT boardId, INT cardId)
+
+Get specific card for board by an external id
+
+# AUTHOR
+
+Adam Stokes <adamjs@cpan.org>
+
+# COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2014 by Adam Stokes.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+# DISCLAIMER OF WARRANTY
+
+BECAUSE THIS SOFTWARE IS LICENSED FREE OF CHARGE, THERE IS NO WARRANTY
+FOR THE SOFTWARE, TO THE EXTENT PERMITTED BY APPLICABLE LAW. EXCEPT
+WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT HOLDERS AND/OR OTHER
+PARTIES PROVIDE THE SOFTWARE "AS IS" WITHOUT WARRANTY OF ANY KIND,
+EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE
+SOFTWARE IS WITH YOU. SHOULD THE SOFTWARE PROVE DEFECTIVE, YOU ASSUME
+THE COST OF ALL NECESSARY SERVICING, REPAIR, OR CORRECTION.
+
+IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING
+WILL ANY COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MAY MODIFY AND/OR
+REDISTRIBUTE THE SOFTWARE AS PERMITTED BY THE ABOVE LICENCE, BE LIABLE
+TO YOU FOR DAMAGES, INCLUDING ANY GENERAL, SPECIAL, INCIDENTAL, OR
+CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE THE
+SOFTWARE (INCLUDING BUT NOT LIMITED TO LOSS OF DATA OR DATA BEING
+RENDERED INACCURATE OR LOSSES SUSTAINED BY YOU OR THIRD PARTIES OR A
+FAILURE OF THE SOFTWARE TO OPERATE WITH ANY OTHER SOFTWARE), EVEN IF
+SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH
+DAMAGES.

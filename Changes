@@ -1,0 +1,61 @@
+==================================================
+Changes from 2013-10-06 00:00:00 +0000 to present.
+==================================================
+
+----------------------------------------
+version 0.2 at 2014-10-06 19:42:27 +0000
+----------------------------------------
+
+  Change: 3572a34dd67c97bedcc36f8b4db7ea934527b378
+  Author: Adam Stokes <adam.stokes@ubuntu.com>
+  Date : 2014-10-06 15:42:21 +0000
+
+    add rest of GET api
+
+    Signed-off-by: Adam Stokes <adam.stokes@ubuntu.com> 
+
+----------------------------------------
+version 0.1 at 2014-10-06 19:10:21 +0000
+----------------------------------------
+
+  Change: 68f6b8ac263e7c4647b630594c38d9d4aa11c878
+  Author: Adam Stokes <adam.stokes@ubuntu.com>
+  Date : 2014-10-06 15:10:21 +0000
+
+    v0.1 
+
+  Change: 18dc6dba4673e9c52bca517cc432556b6019f579
+  Author: Adam Stokes <adam.stokes@ubuntu.com>
+  Date : 2014-10-06 15:10:08 +0000
+
+    tests Signed-off-by: Adam Stokes <adam.stokes@ubuntu.com>
+
+    Signed-off-by: Adam Stokes <adam.stokes@ubuntu.com> 
+
+  Change: 2802abbd10857f80b893164945168f52882efcc0
+  Author: Adam Stokes <adam.stokes@ubuntu.com>
+  Date : 2014-10-06 14:17:21 +0000
+
+    tests
+
+    Signed-off-by: Adam Stokes <adam.stokes@ubuntu.com> 
+
+  Change: 7616ff441fac385c8ef029477761137990f85f2f
+  Author: Adam Stokes <adam.stokes@ubuntu.com>
+  Date : 2014-10-06 12:53:34 +0000
+
+    start api work
+
+    Signed-off-by: Adam Stokes <adam.stokes@ubuntu.com> 
+
+  Change: 6237a5ceceeddcf5c6879a4380d3bc77b4c54929
+  Author: Adam Stokes <adam.stokes@ubuntu.com>
+  Date : 2014-10-06 12:23:24 +0000
+
+    init
+
+    Signed-off-by: Adam Stokes <adam.stokes@ubuntu.com> 
+
+================
+End of releases.
+================
