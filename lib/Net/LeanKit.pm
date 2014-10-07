@@ -1,5 +1,5 @@
 package Net::LeanKit;
-$Net::LeanKit::VERSION = '0.3';
+$Net::LeanKit::VERSION = '0.4';
 # ABSTRACT: A perl library for Leankit.com
 
 use strict;
@@ -8,7 +8,6 @@ use Carp;
 use HTTP::Tiny;
 use JSON::Any;
 use URI::Escape;
-use namespace::clean;
 
 
 use Class::Tiny qw( email password account ), {
@@ -235,6 +234,143 @@ sub updateCard {
     return $self->post($updateCard, $card);
 }
 
+sub updateCardFields {
+  my ($self, $updateFields) = @_;
+  return $self->post('card/update', $updateFields);
+}
+
+sub getComments {
+  my ($self, $boardId, $cardId) = @_;
+  my $comment = sprintf('card/getcomments/%s/%s', $boardId, $cardId);
+  return $self->get($comment);
+}
+
+sub addComment {
+    my ($self, $boardId, $cardId, $userId, $comment) = @_;
+    my $params = {PostedById => $userId, Text => $comment};
+    my $addComment = sprintf('card/savecomment/%s/%s', $boardId, $cardId);
+    return $self->post($addComment, $params);
+}
+
+
+sub addCommentByExternalId {
+    my ($self, $boardId, $externalCardId, $userId, $comment) = @_;
+    my $params = {PostedById => $userId, Text => $comment};
+    my $addComment = sprintf('card/savecommentbyexternalid/%s/%s',
+        $boardId, uri_escape($externalCardId));
+    return $self->post($addComment, $params);
+}
+
+sub getCardHistory {
+  my ($self, $boardId, $cardId) = @_;
+  my $history = sprintf('card/history/%s/%s', $boardId, $cardId);
+  return $self->get($history);
+}
+
+
+
+sub searchCards {
+    my ($self, $boardId, $options) = @_;
+    my $search = sprintf('board/%s/searchcards', $boardId);
+    return $self->post($search, $options);
+}
+
+sub getNewCards {
+    my ($self, $boardId) = @_;
+    my $newCards = sprintf('board/%s/listnewcards', $boardId);
+    return $self->get($newCards);
+}
+
+sub deleteCard {
+    my ($self, $boardId, $cardId) = @_;
+    my $delCard = sprintf('board/%s/deletecard/%s', $boardId, $cardId);
+    return $self->post($delCard, {});
+}
+
+sub deleteCards {
+    my ($self, $boardId, $cardIds) = @_;
+    my $delCard = sprintf('board/%s/deletecards', $boardId);
+    return $self->post($delCard, $cardIds);
+}
+
+sub getTaskBoard {
+    my ($self, $boardId, $cardId) = @_;
+    my $taskBoard =
+      sprintf('v1/board/%s/card/%s/taskboard', $boardId, $cardId);
+    return $self->get($taskBoard);
+}
+
+sub addTask {
+    my ($self, $boardId, $cardId, $taskCard) = @_;
+    $taskCard->{UserWipOverrideComment} = $self->defaultWipOverrideReason;
+    my $url = sprintf('v1/board/%s/card/%s/tasks/lane/%s/position/%s',
+        $boardId, $cardId, $taskCard->{LaneId}, $taskCard->{Index});
+    return $self->post($url, $taskCard);
+}
+
+sub updateTask {
+    my ($self, $boardId, $cardId, $taskCard) = @_;
+    $taskCard->{UserWipOverrideComment} = $self->defaultWipOverrideReason;
+    my $url = sprintf('v1/board/%s/update/card/%s/tasks/%s',
+        $boardId, $cardId, $taskCard->{Id});
+    return $self->post($url, $taskCard);
+}
+
+sub deleteTask {
+    my ($self, $boardId, $cardId, $taskId) = @_;
+    my $url = sprintf('v1/board/%s/delete/card/%s/tasks/%s',
+        $boardId, $cardId, $taskId);
+    return $self->post($url, {});
+}
+
+sub getTaskBoardUpdates {
+    my ($self, $boardId, $cardId, $version) = @_;
+    my $url = sprintf('v1/board/%s/card/%s/tasks/boardversion/%s',
+        $boardId, $cardId, $version);
+    return $self->get($url);
+}
+
+sub moveTask {
+    my ($self, $boardId, $cardId, $taskId, $toLaneId, $position) = @_;
+    my $url = sprintf('v1/board/%s/move/card/%s/tasks/%s/lane/%s/position/%s',
+        $boardId, $cardId, $taskId, $toLaneId, $position);
+    return $self->post($url, {});
+}
+
+sub getAttachmentCount {
+  my ($self, $boardId, $cardId) = @_;
+  my $url = sprintf('card/GetAttachmentsCount/%s/%s', $boardId, $cardId);
+  return $self->get($url);
+}
+
+sub getAttachments {
+  my ($self, $boardId, $cardId) = @_;
+  my $url = sprintf('card/GetAttachments/%s/%s', $boardId, $cardId);
+  return $self->get($url);
+}
+
+sub getAttachment {
+  my ($self, $boardId, $cardId, $attachmentId) = @_;
+  my $url = sprintf('card/GetAttachments/%s/%s/%s', $boardId, $cardId, $attachmentId);
+  return $self->get($url);
+}
+
+sub downloadAttachment {
+  my $self = shift;
+  return 'Not implemented';
+}
+
+sub deleteAttachment {
+  my ($self, $boardId, $cardId, $attachmentId) = @_;
+  my $url = sprintf('card/DeleteAttachment/%s/%s/%s', $boardId, $cardId, $attachmentId);
+  return $self->post($url, {});
+}
+
+sub addAttachment {
+  my $self = shift;
+  return 'Not Implemented';
+}
+
 1;
 
 __END__
@@ -249,7 +385,7 @@ Net::LeanKit - A perl library for Leankit.com
 
 =head1 VERSION
 
-version 0.3
+version 0.4
 
 =head1 SYNOPSIS
 
@@ -275,11 +411,11 @@ Account name in which your account is under, usually a company name.
 
 =head1 METHODS
 
-=head2 get(STR endpoint)
+=head2 get
 
 GET requests to leankit
 
-=head2 post(STR endpoint, HASH body)
+=head2 post
 
 POST requests to leankit
 
@@ -291,31 +427,31 @@ Returns list of boards
 
 Returns list of latest created boards
 
-=head2 getBoard(INT id)
+=head2 getBoard
 
 Gets leankit board by id
 
-=head2 getBoardByName(STR boardName)
+=head2 getBoardByName
 
 Finds a board by name
 
-=head2 getBoardIdentifiers(INT boardId)
+=head2 getBoardIdentifiers
 
 Get board identifiers
 
-=head2 getBoardBacklogLanes(INT boardId)
+=head2 getBoardBacklogLanes
 
 Get board back log lanes
 
-=head2 getBoardArchiveLanes(INT boardId)
+=head2 getBoardArchiveLanes
 
 Get board archive lanes
 
-=head2 getBoardArchiveCards(INT boardId)
+=head2 getBoardArchiveCards
 
 Get board archive cards
 
-=head2 getNewerIfExists(INT boardId, INT version)
+=head2 getNewerIfExists
 
 Get newer board version if exists
 
@@ -323,19 +459,19 @@ Get newer board version if exists
 
 Get newer board history
 
-=head2 getBoardUpdates(INT boardId, INT version)
+=head2 getBoardUpdates
 
 Get board updates
 
-=head2 getCard(INT boardId, INT cardId)
+=head2 getCard
 
 Get specific card for board
 
-=head2 getCardByExternalId(INT boardId, INT cardId)
+=head2 getCardByExternalId
 
 Get specific card for board by an external id
 
-=head2 addCard(INT boardId, INT laneId, INT position, HASHREF card)
+=head2 addCard
 
 Add a card to the board/lane specified. The card hash usually contains
 
@@ -345,7 +481,7 @@ Add a card to the board/lane specified. The card hash usually contains
     Priority => 1
   }
 
-=head2 addCards(INT boardId, ARRAYREF cards)
+=head2 addCards
 
 Add multiple cards to the board/lane specified. The card hash usually contains
 
@@ -355,21 +491,116 @@ Add multiple cards to the board/lane specified. The card hash usually contains
     Priority => 1
   }
 
-=head2 moveCard(INT boardId, INT cardId, INT toLaneId, INT position)
+=head2 moveCard
 
 Moves card to different lanes
 
-=head2 moveCardByExternalId(INT boardId, INT externalCardId, INT toLaneId, INT position)
+=head2 moveCardByExternalId
 
 Moves card to different lanes by externalId
 
-=head2 moveCardToBoard(INT cardId, INT destinationBoardId)
+=head2 moveCardToBoard
 
 Moves card to another board
 
-=head2 updateCard(INT boardId, HASHREF card)
+=head2 updateCard
 
 Update a card
+
+=head2 updateCardFields
+
+Update fields in card
+
+=head2 getComments
+
+Get comments for card
+
+=head2 addComment
+
+Add comment for card
+
+=head2 addCommentByExternalId
+
+Add comment for card
+
+=head2 getCardHistory
+
+Get card history
+
+=head2 searchCards
+
+Search cards, options is a hashref of search options
+
+Eg,
+
+    searchOptions = {
+        IncludeArchiveOnly: false,
+        IncludeBacklogOnly: false,
+        IncludeComments: false,
+        IncludeDescription: false,
+        IncludeExternalId: false,
+        IncludeTags: false,
+        AddedAfter: null,
+        AddedBefore: null,
+        CardTypeIds: [],
+        ClassOfServiceIds: [],
+        Page: 1,
+        MaxResults: 20,
+        OrderBy: "CreatedOn",
+        SortOrder: 0
+    };
+
+=head2 getNewCards
+
+Get latest added cards
+
+=head2 deleteCard
+
+Delete a single card
+
+=head2 deleteCards
+
+Delete batch of cards
+
+=head2 getTaskBoard
+
+Get task board
+
+=head2 addTask
+
+Adds task to card
+
+=head2 updateTask
+
+Updates task in card
+
+=head2 deleteTask
+
+Deletes task
+
+=head2 getTaskBoardUpdates
+
+Get latest task additions/changes
+
+=head2 moveTask
+
+Moves task to different lanes
+
+=head2 getAttachmentCount
+
+Get num of attachments for card
+
+=head2 getAttachments
+
+Get list of attachments
+
+=head2 getAttachment
+
+Get single attachment
+
+=head2 deleteAttachment
+
+Removes attachment from card
 
 =head1 AUTHOR
 
