@@ -1,5 +1,5 @@
 package Net::LeanKit;
-$Net::LeanKit::VERSION = '0.4';
+$Net::LeanKit::VERSION = '0.5';
 # ABSTRACT: A perl library for Leankit.com
 
 use strict;
@@ -40,7 +40,7 @@ sub get {
 
     my $r = $self->ua->get($url, {headers => $self->headers});
     croak "$r->{status} $r->{reason}" unless $r->{success};
-    my $content = $r->{content} ? $self->j->decode($r->{content}) : 1;
+    my $content = $r->{content} ? $self->j->decode($r->{content}) : +[];
     return $content->{ReplyData}->[0];
 }
 
@@ -58,18 +58,17 @@ sub post {
     else {
         $post->{headers}->{'Content-Length'} = '0';
     }
-
     my $r = $self->ua->post($url, $post);
     croak "$r->{status} $r->{reason}" unless $r->{success};
-    return $self->j->decode($r->{content});
+    my $content = $r->{content} ? $self->j->decode($r->{content}) : +[];
+    return $content->{ReplyData}->[0];
 }
 
 
 
 sub getBoards {
     my ($self) = @_;
-    my $res = $self->get('boards');
-    return $res;
+    return $self->get('boards');
 }
 
 
@@ -177,7 +176,7 @@ sub addCard {
     my ($self, $boardId, $laneId, $position, $card) = @_;
     $card->{UserWipOverrideComment} = $self->defaultWipOverrideReason;
     my $newCard =
-      sprintf('board/%s/AddCardWithWipOvveride/Lane/%s/Position/%s',
+      sprintf('board/%s/AddCardWithWipOverride/Lane/%s/Position/%s',
         $boardId, $laneId, $position);
     return $self->post($newCard, $card);
 }
@@ -385,7 +384,7 @@ Net::LeanKit - A perl library for Leankit.com
 
 =head1 VERSION
 
-version 0.4
+version 0.5
 
 =head1 SYNOPSIS
 
@@ -455,7 +454,7 @@ Get board archive cards
 
 Get newer board version if exists
 
-=head2 getBoardHistorySince(INT boardId, INT version)
+=head2 getBoardHistorySince
 
 Get newer board history
 
@@ -477,7 +476,7 @@ Add a card to the board/lane specified. The card hash usually contains
 
   { TypeId => 1,
     Title => 'my card title',
-    ExternCardId => DATETIME,
+    ExternalCardId => DATETIME,
     Priority => 1
   }
 
