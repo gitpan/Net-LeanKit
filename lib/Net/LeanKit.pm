@@ -1,5 +1,5 @@
 package Net::LeanKit;
-$Net::LeanKit::VERSION = '0.5';
+$Net::LeanKit::VERSION = '0.6';
 # ABSTRACT: A perl library for Leankit.com
 
 use strict;
@@ -384,7 +384,7 @@ Net::LeanKit - A perl library for Leankit.com
 
 =head1 VERSION
 
-version 0.5
+version 0.6
 
 =head1 SYNOPSIS
 

@@ -20,7 +20,7 @@ my @files = (
     't/00-report-prereqs.dd',
     't/00-report-prereqs.t',
     't/01-boards.t',
-    't/author-critic.t',
+    't/02-cards.t',
     't/author-no-tabs.t',
     't/release-kwalitee.t',
     't/release-minimum-version.t'
