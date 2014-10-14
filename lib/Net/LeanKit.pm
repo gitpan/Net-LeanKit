@@ -1,39 +1,44 @@
 package Net::LeanKit;
-$Net::LeanKit::VERSION = '0.6';
+$Net::LeanKit::VERSION = '1.0.0';
 # ABSTRACT: A perl library for Leankit.com
 
 use strict;
 use warnings;
-use Carp;
+use Carp qw(croak);
+use Path::Tiny;
 use HTTP::Tiny;
 use JSON::Any;
 use URI::Escape;
+use Method::Signatures;
+use Types::Standard qw( Str ArrayRef );
+use Moo;
+use namespace::clean;
 
 
-use Class::Tiny qw( email password account ), {
-    boardIdentifiers => sub { +{} },
-    defaultWipOverrideReason =>
-      sub {'WIP Override performed by external system'},
-    headers => sub {
+
+has email => (is => 'ro', isa => Str, required => 1);
+has password => (is => 'ro', required => 1, isa => Str);
+has account  => (is => 'ro', required => 1, isa => Str);
+has boardIdentifiers => (is => 'rw', default => sub { +{} });
+has defaultWipOverrideReason => (
+    is      => 'ro',
+    default => sub {'WIP Override performed by external system'}
+);
+has headers => (
+    is      => 'ro',
+    default => sub {
         {   'Accept'       => 'application/json',
             'Content-type' => 'application/json'
         };
-    },
-    ua => sub { HTTP::Tiny->new },
-    j  => sub { JSON::Any->new }
-};
-
-sub BUILD {
-    my ($self, $args) = @_;
-    for my $req (qw/ email password account/) {
-        croak "$req attribute required" unless defined $self->$req;
     }
-}
+);
+
+has ua => (is => 'ro', default => sub { HTTP::Tiny->new });
+has j  => (is => 'ro', default => sub { JSON::Any->new });
 
 
 
-sub get {
-    my ($self, $endpoint) = @_;
+method get ($endpoint) {
     my $auth = uri_escape(sprintf("%s:%s", $self->email, $self->password));
     my $url = sprintf('https://%s@%s.leankit.com/kanban/api/%s',
         $auth, $self->account, $endpoint);
@@ -45,8 +50,7 @@ sub get {
 }
 
 
-sub post {
-    my ($self, $endpoint, $body) = @_;
+method post ($endpoint, $body) {
     my $auth = uri_escape(sprintf("%s:%s", $self->email, $self->password));
     my $url = sprintf('https://%s@%s.leankit.com/kanban/api/%s',
         $auth, $self->account, $endpoint);
@@ -66,29 +70,25 @@ sub post {
 
 
 
-sub getBoards {
-    my ($self) = @_;
+method getBoards {
     return $self->get('boards');
 }
 
 
 
-sub getNewBoards {
-    my ($self) = @_;
+method getNewBoards {
     return $self->get('ListNewBoards');
 }
 
 
-sub getBoard {
-    my ($self, $id) = @_;
+method getBoard ($id) {
     my $boardId = sprintf('boards/%s', $id);
     return $self->get($boardId);
 }
 
 
 
-sub getBoardByName {
-    my ($self, $boardName) = @_;
+method getBoardByName ($boardName) {
     foreach my $board (@{$self->getBoards}) {
         next unless $board->{Title} =~ /$boardName/i;
         return $board;
@@ -96,8 +96,7 @@ sub getBoardByName {
 }
 
 
-sub getBoardIdentifiers {
-    my ($self, $boardId) = @_;
+method getBoardIdentifiers ($boardId) {
 
     # use cache
     if ($self->boardIdentifiers->{$boardId}) {
@@ -111,60 +110,52 @@ sub getBoardIdentifiers {
 }
 
 
-sub getBoardBacklogLanes {
-    my ($self, $boardId) = @_;
+method getBoardBacklogLanes ($boardId) {
     my $board = sprintf("board/%s/backlog", $boardId);
     return $self->get($board);
 }
 
 
-sub getBoardArchiveLanes {
-    my ($self, $boardId) = @_;
+method getBoardArchiveLanes ($boardId) {
     my $board = sprintf("board/%s/archive", $boardId);
     return $self->get($board);
 }
 
 
-sub getBoardArchiveCards {
-    my ($self, $boardId) = @_;
+method getBoardArchiveCards ($boardId) {
     my $board = sprintf("board/%s/archivecards", $boardId);
     return $self->get($board);
 }
 
 
-sub getNewerIfExists {
-    my ($self, $boardId, $version) = @_;
+method getNewerIfExists ($boardId, $version) {
     my $board = sprintf("board/%s/boardversion/%s/getnewerifexists", $boardId,
         $version);
     return $self->get($board);
 }
 
 
-sub getBoardHistorySince {
-    my ($self, $boardId, $version) = @_;
+method getBoardHistorySince ($boardId, $version) {
     my $board = sprintf("board/%s/boardversion/%s/getboardhistorysince",
         $boardId, $version);
     return $self->get($board);
 }
 
 
-sub getBoardUpdates {
-    my ($self, $boardId, $version) = @_;
+method getBoardUpdates ($boardId, $version) {
     my $board =
       sprintf("board/%s/boardversion/%s/checkforupdates", $boardId, $version);
     return $self->get($board);
 }
 
 
-sub getCard {
-    my ($self, $boardId, $cardId) = @_;
+method getCard ($boardId, $cardId) {
     my $board = sprintf("board/%s/getcard/%s", $boardId, $cardId);
     return $self->get($board);
 }
 
 
-sub getCardByExternalId {
-    my ($self, $boardId, $externalCardId) = @_;
+method getCardByExternalId ($boardId, $externalCardId) {
     my $board = sprintf("board/%s/getcardbyexternalid/%s",
         $boardId, uri_escape($externalCardId));
     return $self->get($board);
@@ -172,8 +163,7 @@ sub getCardByExternalId {
 
 
 
-sub addCard {
-    my ($self, $boardId, $laneId, $position, $card) = @_;
+method addCard ($boardId, $laneId, $position, $card) {
     $card->{UserWipOverrideComment} = $self->defaultWipOverrideReason;
     my $newCard =
       sprintf('board/%s/AddCardWithWipOverride/Lane/%s/Position/%s',
@@ -182,18 +172,15 @@ sub addCard {
 }
 
 
-sub addCards {
-    my ($self, $boardId, $cards) = @_;
-    my $newCard =
-      sprintf('board/%s/AddCards?wipOverrideComment="%s"',
+method addCards ($boardId, ArrayRef $cards) {
+    my $newCard = sprintf('board/%s/AddCards?wipOverrideComment="%s"',
         $boardId, $self->defaultWipOverrideReason);
     return $self->post($newCard, $cards);
 }
 
 
 
-sub moveCard {
-    my ($self, $boardId, $cardId, $toLaneId, $position) = @_;
+method moveCard ($boardId, $cardId, $toLaneId, $position) {
     my $moveCard =
       sprintf('board/%s/movecardwithwipoverride/%s/lane/%s/position/%s',
         $boardId, $cardId, $toLaneId, $position);
@@ -203,8 +190,7 @@ sub moveCard {
 
 
 
-sub moveCardByExternalId {
-    my ($self, $boardId, $externalCardId, $toLaneId, $position) = @_;
+method moveCardByExternalId ($boardId, $externalCardId, $toLaneId, $position) {
     my $moveCard = sprintf(
         'board/%s/movecardbyexternalid/%s/lane/%s/position/%s',
         $boardId, uri_escape($externalCardId),
@@ -216,8 +202,7 @@ sub moveCardByExternalId {
 
 
 
-sub moveCardToBoard {
-    my ($self, $cardId, $destinationBoardId) = @_;
+method moveCardToBoard ($cardId, $destinationBoardId) {
     my $moveCard = sprintf('card/movecardtoanotherboard/%s/%s',
         $cardId, $destinationBoardId);
     my $params = {};
@@ -226,149 +211,153 @@ sub moveCardToBoard {
 
 
 
-sub updateCard {
-    my ($self, $boardId, $card) = @_;
+method updateCard ($boardId, $card) {
     $card->{UserWipOverrideComment} = $self->defaultWipOverrideReason;
     my $updateCard = sprintf('board/%s/UpdateCardWithWipOverride');
     return $self->post($updateCard, $card);
 }
 
-sub updateCardFields {
-  my ($self, $updateFields) = @_;
-  return $self->post('card/update', $updateFields);
+
+method updateCardFields ($updateFields) {
+    return $self->post('card/update', $updateFields);
 }
 
-sub getComments {
-  my ($self, $boardId, $cardId) = @_;
-  my $comment = sprintf('card/getcomments/%s/%s', $boardId, $cardId);
-  return $self->get($comment);
+
+method getComments ($boardId, $cardId) {
+    my $comment = sprintf('card/getcomments/%s/%s', $boardId, $cardId);
+    return $self->get($comment);
 }
 
-sub addComment {
-    my ($self, $boardId, $cardId, $userId, $comment) = @_;
+
+method addComment ($boardId, $cardId, $userId, $comment) {
     my $params = {PostedById => $userId, Text => $comment};
     my $addComment = sprintf('card/savecomment/%s/%s', $boardId, $cardId);
     return $self->post($addComment, $params);
 }
 
 
-sub addCommentByExternalId {
-    my ($self, $boardId, $externalCardId, $userId, $comment) = @_;
+method addCommentByExternalId ($boardId, $externalCardId, $userId, $comment) {
     my $params = {PostedById => $userId, Text => $comment};
     my $addComment = sprintf('card/savecommentbyexternalid/%s/%s',
         $boardId, uri_escape($externalCardId));
     return $self->post($addComment, $params);
 }
 
-sub getCardHistory {
-  my ($self, $boardId, $cardId) = @_;
-  my $history = sprintf('card/history/%s/%s', $boardId, $cardId);
-  return $self->get($history);
+
+method getCardHistory ($boardId, $cardId) {
+    my $history = sprintf('card/history/%s/%s', $boardId, $cardId);
+    return $self->get($history);
 }
 
 
 
-sub searchCards {
-    my ($self, $boardId, $options) = @_;
+method searchCards ($boardId, $options) {
     my $search = sprintf('board/%s/searchcards', $boardId);
     return $self->post($search, $options);
 }
 
-sub getNewCards {
-    my ($self, $boardId) = @_;
+
+method getNewCards ($boardId) {
     my $newCards = sprintf('board/%s/listnewcards', $boardId);
     return $self->get($newCards);
 }
 
-sub deleteCard {
-    my ($self, $boardId, $cardId) = @_;
+
+method deleteCard ($boardId, $cardId) {
     my $delCard = sprintf('board/%s/deletecard/%s', $boardId, $cardId);
     return $self->post($delCard, {});
 }
 
-sub deleteCards {
-    my ($self, $boardId, $cardIds) = @_;
+
+method deleteCards ($boardId, $cardIds) {
     my $delCard = sprintf('board/%s/deletecards', $boardId);
     return $self->post($delCard, $cardIds);
 }
 
-sub getTaskBoard {
-    my ($self, $boardId, $cardId) = @_;
+
+method getTaskBoard ($boardId, $cardId) {
     my $taskBoard =
       sprintf('v1/board/%s/card/%s/taskboard', $boardId, $cardId);
     return $self->get($taskBoard);
 }
 
-sub addTask {
-    my ($self, $boardId, $cardId, $taskCard) = @_;
+
+method addTask ($boardId, $cardId, $taskCard) {
     $taskCard->{UserWipOverrideComment} = $self->defaultWipOverrideReason;
     my $url = sprintf('v1/board/%s/card/%s/tasks/lane/%s/position/%s',
         $boardId, $cardId, $taskCard->{LaneId}, $taskCard->{Index});
     return $self->post($url, $taskCard);
 }
 
-sub updateTask {
-    my ($self, $boardId, $cardId, $taskCard) = @_;
+
+method updateTask ($boardId, $cardId, $taskCard) {
     $taskCard->{UserWipOverrideComment} = $self->defaultWipOverrideReason;
     my $url = sprintf('v1/board/%s/update/card/%s/tasks/%s',
         $boardId, $cardId, $taskCard->{Id});
     return $self->post($url, $taskCard);
 }
 
-sub deleteTask {
-    my ($self, $boardId, $cardId, $taskId) = @_;
+
+method deleteTask ($boardId, $cardId, $taskId) {
     my $url = sprintf('v1/board/%s/delete/card/%s/tasks/%s',
         $boardId, $cardId, $taskId);
     return $self->post($url, {});
 }
 
-sub getTaskBoardUpdates {
-    my ($self, $boardId, $cardId, $version) = @_;
+
+method getTaskBoardUpdates ($boardId, $cardId, $version) {
     my $url = sprintf('v1/board/%s/card/%s/tasks/boardversion/%s',
         $boardId, $cardId, $version);
     return $self->get($url);
 }
 
-sub moveTask {
-    my ($self, $boardId, $cardId, $taskId, $toLaneId, $position) = @_;
+
+method moveTask ($boardId, $cardId, $taskId, $toLaneId, $position) {
     my $url = sprintf('v1/board/%s/move/card/%s/tasks/%s/lane/%s/position/%s',
         $boardId, $cardId, $taskId, $toLaneId, $position);
     return $self->post($url, {});
 }
 
-sub getAttachmentCount {
-  my ($self, $boardId, $cardId) = @_;
-  my $url = sprintf('card/GetAttachmentsCount/%s/%s', $boardId, $cardId);
-  return $self->get($url);
+
+method getAttachmentCount ($boardId, $cardId) {
+    my $url = sprintf('card/GetAttachmentsCount/%s/%s', $boardId, $cardId);
+    return $self->get($url);
 }
 
-sub getAttachments {
-  my ($self, $boardId, $cardId) = @_;
-  my $url = sprintf('card/GetAttachments/%s/%s', $boardId, $cardId);
-  return $self->get($url);
+
+method getAttachments ($boardId, $cardId) {
+    my $url = sprintf('card/GetAttachments/%s/%s', $boardId, $cardId);
+    return $self->get($url);
 }
 
-sub getAttachment {
-  my ($self, $boardId, $cardId, $attachmentId) = @_;
-  my $url = sprintf('card/GetAttachments/%s/%s/%s', $boardId, $cardId, $attachmentId);
-  return $self->get($url);
+
+method getAttachment ($boardId, $cardId, $attachmentId) {
+    my $url = sprintf('card/GetAttachments/%s/%s/%s',
+        $boardId, $cardId, $attachmentId);
+    return $self->get($url);
 }
 
-sub downloadAttachment {
-  my $self = shift;
-  return 'Not implemented';
+method downloadAttachment ($boardId, $cardId, $attachmentId, $dst) {
+    my $url = sprintf('card/DownloadAttachment/%s/%s/%s',
+        $boardId, $cardId, $attachmentId);
+    my $dl = $self->get($url);
+    path($dst)->spew($dl);
 }
 
-sub deleteAttachment {
-  my ($self, $boardId, $cardId, $attachmentId) = @_;
-  my $url = sprintf('card/DeleteAttachment/%s/%s/%s', $boardId, $cardId, $attachmentId);
-  return $self->post($url, {});
+
+
+method deleteAttachment ($boardId, $cardId, $attachmentId) {
+    my $url = sprintf('card/DeleteAttachment/%s/%s/%s',
+        $boardId, $cardId, $attachmentId);
+    return $self->post($url, {});
 }
 
-sub addAttachment {
-  my $self = shift;
-  return 'Not Implemented';
-}
+# method addAttachment($boardId, $cardId, $description, $file) {
+#   my $url = sprintf('card/SaveAttachment/%s/%s', $boardId, $cardId);
+#   my $filename = path($file);
+#   my $attachment_data = { Id => 0, Description => $description, FileName => $filename->basename};
+#   return $self->post($url, $file, $attachment_data);
+# }
 
 1;
 
@@ -384,7 +373,7 @@ Net::LeanKit - A perl library for Leankit.com
 
 =head1 VERSION
 
-version 0.6
+version 1.0.0
 
 =head1 SYNOPSIS
 
