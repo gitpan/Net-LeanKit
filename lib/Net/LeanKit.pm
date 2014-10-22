@@ -1,71 +1,87 @@
 package Net::LeanKit;
-$Net::LeanKit::VERSION = '1.0.0';
+BEGIN {
+  $Net::LeanKit::AUTHORITY = 'cpan:ADAMJS';
+}
+$Net::LeanKit::VERSION = '1.0.1';
 # ABSTRACT: A perl library for Leankit.com
 
-use strict;
-use warnings;
 use Carp qw(croak);
 use Path::Tiny;
-use HTTP::Tiny;
-use JSON::Any;
-use URI::Escape;
-use Method::Signatures;
-use Types::Standard qw( Str ArrayRef );
-use Moo;
+use Mojo::URL;
+use Mojo::UserAgent;
+use Mojo::JSON qw(encode_json decode_json);
+use Function::Parameters;
+use Moose;
 use namespace::clean;
 
 
 
-has email => (is => 'ro', isa => Str, required => 1);
-has password => (is => 'ro', required => 1, isa => Str);
-has account  => (is => 'ro', required => 1, isa => Str);
-has boardIdentifiers => (is => 'rw', default => sub { +{} });
+has email    => (is => 'ro', required => 1, isa => 'Str');
+has password => (is => 'ro', required => 1, isa => 'Str');
+has account  => (is => 'ro', required => 1, isa => 'Str');
+
 has defaultWipOverrideReason => (
     is      => 'ro',
-    default => sub {'WIP Override performed by external system'}
+    default => 'WIP Override performed by external system'
 );
+
 has headers => (
     is      => 'ro',
-    default => sub {
-        {   'Accept'       => 'application/json',
-            'Content-type' => 'application/json'
-        };
-    }
+    builder => '_build_headers'
 );
 
-has ua => (is => 'ro', default => sub { HTTP::Tiny->new });
-has j  => (is => 'ro', default => sub { JSON::Any->new });
+has ua => (is => 'ro', isa => 'Mojo::UserAgent', builder => '_build_http');
 
+method _build_boardIdentifiers {
+    return +{};
+}
+
+method _build_headers {
+    {   'Accept'       => 'application/json',
+        'Content-type' => 'application/json'
+    };
+}
+
+method _build_http {
+    Mojo::UserAgent->new;
+}
 
 
 method get ($endpoint) {
-    my $auth = uri_escape(sprintf("%s:%s", $self->email, $self->password));
-    my $url = sprintf('https://%s@%s.leankit.com/kanban/api/%s',
-        $auth, $self->account, $endpoint);
-
-    my $r = $self->ua->get($url, {headers => $self->headers});
-    croak "$r->{status} $r->{reason}" unless $r->{success};
-    my $content = $r->{content} ? $self->j->decode($r->{content}) : +[];
-    return $content->{ReplyData}->[0];
+    my $url = Mojo::URL->new;
+    $url->scheme('https');
+    $url->userinfo(sprintf("%s:%s", $self->email, $self->password));
+    $url->host($self->account . '.leankit.com');
+    $url->path('kanban/api/' . $endpoint);
+    my $r = $self->ua->get($url->to_string);
+    if (my $res = $r->success) {
+        my $content = decode_json($res->body);
+        return $content->{ReplyData}->[0];
+    }
+    else {
+        my $err = $r->error;
+        croak "$err->{code} response: $err->{message}" if $err->{code};
+        croak "$err->{message}";
+    }
 }
 
 
 method post ($endpoint, $body) {
-    my $auth = uri_escape(sprintf("%s:%s", $self->email, $self->password));
-    my $url = sprintf('https://%s@%s.leankit.com/kanban/api/%s',
-        $auth, $self->account, $endpoint);
-
-    my $post = {headers => $self->headers};
-    if (defined $body) {
-        $post->{content} = $self->j->encode($body);
+    my $url = Mojo::URL->new;
+    $url->scheme('https');
+    $url->userinfo(sprintf("%s:%s", $self->email, $self->password));
+    $url->host($self->account . '.leankit.com');
+    $url->path('kanban/api/' . $endpoint);
+    my $r = $self->ua->post($url->to_string => form => $body);
+    if (my $res = $r->success) {
+        my $content = decode_json($res->body);
+        return $content->{ReplyData}->[0];
     }
     else {
-        $post->{headers}->{'Content-Length'} = '0';
+        my $err = $r->error;
+        croak "$err->{code} response: $err->{message}" if $err->{code};
+        croak "$err->{message}";
     }
-    my $r = $self->ua->post($url, $post);
-    croak "$r->{status} $r->{reason}" unless $r->{success};
-    my $content = $r->{content} ? $self->j->decode($r->{content}) : +[];
-    return $content->{ReplyData}->[0];
 }
 
 
@@ -97,16 +113,8 @@ method getBoardByName ($boardName) {
 
 
 method getBoardIdentifiers ($boardId) {
-
-    # use cache
-    if ($self->boardIdentifiers->{$boardId}) {
-        return $self->boardIdentifiers->{$boardId};
-    }
-
     my $board = sprintf('board/%s/GetBoardIdentifiers', $boardId);
-    my $data = $self->get($board);
-    $self->boardIdentifiers->{$boardId} = $data;
-    return $self->boardIdentifiers->{$boardId};
+    return $self->get($board);
 }
 
 
@@ -157,7 +165,7 @@ method getCard ($boardId, $cardId) {
 
 method getCardByExternalId ($boardId, $externalCardId) {
     my $board = sprintf("board/%s/getcardbyexternalid/%s",
-        $boardId, uri_escape($externalCardId));
+        $boardId, $externalCardId);
     return $self->get($board);
 }
 
@@ -359,6 +367,7 @@ method deleteAttachment ($boardId, $cardId, $attachmentId) {
 #   return $self->post($url, $file, $attachment_data);
 # }
 
+__PACKAGE__->meta->make_immutable;
 1;
 
 __END__
@@ -373,7 +382,7 @@ Net::LeanKit - A perl library for Leankit.com
 
 =head1 VERSION
 
-version 1.0.0
+version 1.0.1
 
 =head1 SYNOPSIS
 
