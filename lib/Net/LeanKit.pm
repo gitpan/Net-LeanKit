@@ -2,7 +2,7 @@ package Net::LeanKit;
 BEGIN {
   $Net::LeanKit::AUTHORITY = 'cpan:ADAMJS';
 }
-$Net::LeanKit::VERSION = '2.000';
+$Net::LeanKit::VERSION = '2.001';
 # ABSTRACT: A perl library for Leankit.com
 
 use Carp qw(croak);
@@ -11,7 +11,6 @@ use Mojo::URL;
 use Mojo::UserAgent;
 use Mojo::JSON qw(encode_json decode_json);
 use Function::Parameters;
-use Data::Dumper::Concise;
 use Moose;
 use namespace::clean;
 
@@ -374,7 +373,7 @@ Net::LeanKit - A perl library for Leankit.com
 
 =head1 VERSION
 
-version 2.000
+version 2.001
 
 =head1 SYNOPSIS
 
