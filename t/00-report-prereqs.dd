@@ -14,6 +14,7 @@ do { my $x = {
        'runtime' => {
                       'requires' => {
                                       'Carp' => '0',
+                                      'Data::Dumper::Concise' => '0',
                                       'Function::Parameters' => '0',
                                       'Mojo::JSON' => '0',
                                       'Mojo::URL' => '0',

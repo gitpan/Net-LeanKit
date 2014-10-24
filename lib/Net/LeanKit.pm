@@ -2,7 +2,7 @@ package Net::LeanKit;
 BEGIN {
   $Net::LeanKit::AUTHORITY = 'cpan:ADAMJS';
 }
-$Net::LeanKit::VERSION = '1.0.1';
+$Net::LeanKit::VERSION = '1.0.2';
 # ABSTRACT: A perl library for Leankit.com
 
 use Carp qw(croak);
@@ -11,6 +11,7 @@ use Mojo::URL;
 use Mojo::UserAgent;
 use Mojo::JSON qw(encode_json decode_json);
 use Function::Parameters;
+use Data::Dumper::Concise;
 use Moose;
 use namespace::clean;
 
@@ -25,27 +26,11 @@ has defaultWipOverrideReason => (
     default => 'WIP Override performed by external system'
 );
 
-has headers => (
-    is      => 'ro',
-    builder => '_build_headers'
-);
-
 has ua => (is => 'ro', isa => 'Mojo::UserAgent', builder => '_build_http');
-
-method _build_boardIdentifiers {
-    return +{};
-}
-
-method _build_headers {
-    {   'Accept'       => 'application/json',
-        'Content-type' => 'application/json'
-    };
-}
 
 method _build_http {
     Mojo::UserAgent->new;
 }
-
 
 method get ($endpoint) {
     my $url = Mojo::URL->new;
@@ -65,7 +50,6 @@ method get ($endpoint) {
     }
 }
 
-
 method post ($endpoint, $body) {
     my $url = Mojo::URL->new;
     $url->scheme('https');
@@ -75,7 +59,11 @@ method post ($endpoint, $body) {
     my $r = $self->ua->post($url->to_string => form => $body);
     if (my $res = $r->success) {
         my $content = decode_json($res->body);
-        return $content->{ReplyData}->[0];
+        return {
+            code    => $content->{ReplyCode},
+            content => $content->{ReplyData}->[0],
+            status  => $content->{ReplyText}
+        };
     }
     else {
         my $err = $r->error;
@@ -382,14 +370,14 @@ Net::LeanKit - A perl library for Leankit.com
 
 =head1 VERSION
 
-version 1.0.1
+version 1.0.2
 
 =head1 SYNOPSIS
 
   use Net::LeanKit;
-  my $lk = Net::LeanKit(email => 'user\@.mail.com',
-                        password => 'pass',
-                        account => 'my company');
+  my $lk = Net::LeanKit->(email => 'user\@.mail.com',
+                          password => 'pass',
+                          account => 'my company');
   $lk->getBoards;
 
 =head1 ATTRIBUTES
@@ -407,14 +395,6 @@ Password
 Account name in which your account is under, usually a company name.
 
 =head1 METHODS
-
-=head2 get
-
-GET requests to leankit
-
-=head2 post
-
-POST requests to leankit
 
 =head2 getBoards
 
