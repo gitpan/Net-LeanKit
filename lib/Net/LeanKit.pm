@@ -2,7 +2,7 @@ package Net::LeanKit;
 BEGIN {
   $Net::LeanKit::AUTHORITY = 'cpan:ADAMJS';
 }
-$Net::LeanKit::VERSION = '1.0.2';
+$Net::LeanKit::VERSION = '2.000';
 # ABSTRACT: A perl library for Leankit.com
 
 use Carp qw(croak);
@@ -41,7 +41,11 @@ method get ($endpoint) {
     my $r = $self->ua->get($url->to_string);
     if (my $res = $r->success) {
         my $content = decode_json($res->body);
-        return $content->{ReplyData}->[0];
+        return {
+            code    => $content->{ReplyCode},
+            content => $content->{ReplyData}->[0],
+            status  => $content->{ReplyText}
+        };
     }
     else {
         my $err = $r->error;
@@ -93,7 +97,7 @@ method getBoard ($id) {
 
 
 method getBoardByName ($boardName) {
-    foreach my $board (@{$self->getBoards}) {
+    foreach my $board (@{$self->getBoards->{content}}) {
         next unless $board->{Title} =~ /$boardName/i;
         return $board;
     }
@@ -370,7 +374,7 @@ Net::LeanKit - A perl library for Leankit.com
 
 =head1 VERSION
 
-version 1.0.2
+version 2.000
 
 =head1 SYNOPSIS
 
